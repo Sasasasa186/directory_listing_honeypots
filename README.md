@@ -82,14 +82,14 @@ app/
  ├─ config.py           # configuration globale
  ├─ directory_cache.py  # cache des dossiers
  ├─ directory_files.py  # cache des fichiers
- └─ prompt_fake_files.py
+ ├─ prompt_fake_files.py
+ ├─ requests_log.jsonl  # toutes les requêtes entrantes
+ ├─ directory_history.jsonl #tous les dossiers générés
+ └─ directory_files.jsonl #tous les fichiers générés
 static/
  ├─ milligram.min.css
  └─ favicon.ico
-logs/
- └─ requests_log.jsonl  # toutes les requêtes entrantes
- ├─ directory_history.jsonl #tous les dossiers générés
- ├─ directory_files.jsonl #tous les fichiers générés
+
 ```
 
 * `logs/` et `generated/` sont **exclus de GitHub** via `.gitignore`.
@@ -140,6 +140,13 @@ uvicorn app.main:serv --reload
 
 * Les contributions sont les bienvenues : correction de bugs, nouvelles extensions, amélioration des prompts.
 * Merci de **ne pas inclure de clés API réelles** dans les PR.
+
+---
+
+## 🧑‍💻 Auteur
+**Samy Fulchiron**  
+[🔗 Profil LinkedIn](https://www.linkedin.com/in/samy-fulchiron-00538932b/)  
+[🐙 GitHub](https://github.com/samy-fulchiron)
 
 ---
 

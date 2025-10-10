@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Index of {{ current_path }}</title>
+    <style>
+      body {
+        background: #3333;
+        font-family: Montserrat, Sans-Serif;
+      }
+      
+      .container {
+        padding: 6px;
+        background: #FFF;
+        max-width: 780px;
+        margin: 0 auto;
+        min-height: 500px;
+        border-radius: 4px;
+        border: 1.25px solid #3333;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: Montserrat, Sans-Serif;
+      }
+
+      th {
+        text-align: left;
+        padding: 4px;
+      }
+
+      td {
+        padding: 4px;
+        white-space: nowrap;
+      }
+
+      td:last-child {
+        white-space: normal;
+      }
+
+      a {
+        font-size: 15.2px;
+        color: #0000EE;
+        text-decoration: underline;
+      }
+    
+      hr {
+        display: block;
+        margin-block-start: 0.5em;
+        margin-block-end: 0.5em;
+        margin-inline-start: auto;
+        margin-inline-end: auto;
+        unicode-bidi: isolate;
+        overflow: hidden;
+        border-style: inset;
+        border-width: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Index of {{ current_path }}</h1>
+      <hr>
+      This is an automatically generated directory listing.
+      <hr>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Last modified</th>
+            <th style="text-align: right;">Size</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+
+        <tr><td colspan="4"><hr></td></tr>
+
+        <tbody>
+          <!-- Parent Directory -->
+          <tr>
+            <td>
+              📂 <a href="{{ parent_path }}">Parent Directory</a>
+            </td>
+            <td>-</td>
+            <td style="text-align: right;">-</td>
+          </tr>
+
+          <!-- Loop entries -->
+          {% for entry in files %}
+          <tr>
+            <td>
+              {% if entry.is_dir %}
+                📁
+              {% else %}
+                {% set ext = entry.name.split('.')[-1].lower() %}
+                {% if ext in ['zip', 'gz', 'tar', 'tgz', 'bz2'] %}
+                  🗜️
+                {% elif ext in ['txt', 'md', 'html', 'css', 'log', 'ini', 'conf', 'json', 'js', 'py'] %}
+                  📄
+                {% elif ext in ['pdf'] %}
+                  📑
+                {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                  🖼️
+                {% elif ext in ['exe', 'bin'] %}
+                  💿
+                {% else %}
+                  ❓
+                {% endif %}
+              {% endif %}
+              <a href="{{ current_path }}{{ entry.name }}">{{ entry.name }}</a>
+            </td>
+            <td>{{ entry.modified }}</td>
+            <td style="text-align: right;">{{ entry.size }}</td>
+            <td></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      document.title = "Directory Listing";
+    </script>
+  </body>
+</html>

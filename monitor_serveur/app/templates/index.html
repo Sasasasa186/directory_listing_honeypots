@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monitoring Honeypot HTTP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 1rem;
+      background: #f9f9f9;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    /* Table pour requêtes */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 0.5rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    button {
+      cursor: pointer;
+    }
+    .detail-row td {
+      background: #f0f0f0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    pre {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 0.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    #pagination-controls {
+      margin-bottom: 2rem;
+    }
+    /* Styles historique répertoire */
+    #history-list {
+      list-style-type: none;
+      padding-left: 0;
+      max-width: 800px;
+    }
+    #history-list > li {
+      background: #fff;
+      margin-bottom: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 0.8rem;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+    }
+    .path-header {
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #0078d7;
+    }
+    .path-header:hover {
+      text-decoration: underline;
+    }
+    .entries-list {
+      margin-top: 0.5rem;
+      padding-left: 1.5rem;
+      display: none;
+    }
+    .entry-item {
+      margin-bottom: 0.3rem;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #444;
+    }
+    .entry-item.folder {
+      color: #1a73e8;
+    }
+    .toggle-icon {
+      font-weight: bold;
+      margin-left: 0.3rem;
+      user-select: none;
+      transition: transform 0.2s ease;
+    }
+    .toggle-icon.open {
+      transform: rotate(90deg);
+    }
+  </style>
+</head>
+<body>
+  <h1>Monitoring Honeypot HTTP</h1>
+
+  <h2>Received HTTP requests</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>MMethod</th>
+        <th>URL</th>
+        <th>Client IP</th>
+        <th>Status</th>
+        <th>Processing Time</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody id="requests-body">
+      <tr><td colspan="6">Loading...</td></tr>
+    </tbody>
+  </table>
+
+  <div id="pagination-controls">
+    <button onclick="changePage(-1)">Previous page</button>
+    <span id="page-indicator">Page 1</span>
+    <button onclick="changePage(1)">Next page</button>
+  </div>
+
+  <h2>Directory history</h2>
+  <ul id="history-list">
+    <li>Loading...</li>
+  </ul>
+
+  <h2>Exposed files content</h2>
+  <ul id="files-list">
+    <li>Loading...</li>
+  </ul>
+
+
+
+  <script>
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+
+    let allRequests = [];
+    let allHistory = [];
+    let allFiles = [];
+
+    let currentPage = 1;
+    const rowsPerPage = 3;
+
+    let currentHistoryPage = 1;
+    const historyRowsPerPage = 3;
+
+    let currentFilesPage = 1;
+    const filesRowsPerPage = 3;
+
+
+    function renderRequests() {
+      const tbody = document.getElementById('requests-body');
+      if (allRequests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No requests received</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const requestsToShow = allRequests.slice(start, end);
+
+      requestsToShow.forEach((entry, indexInPage) => {
+        const index = start + indexInPage;
+        const req = entry.request || {};
+        const res = entry.response || {};
+
+        const method = req.method || '';
+        const url = req.url || '';
+        const clientIp = req.client_ip || '';
+        const status = res.status_code || '';
+        const processTime = res.process_time_ms !== undefined ? res.process_time_ms.toFixed(2) + ' ms' : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${method}</td>
+          <td>${url}</td>
+          <td>${clientIp}</td>
+          <td>${status}</td>
+          <td>${processTime}</td>
+          <td><button data-index="${index}">Show details</button></td>
+        `;
+        tbody.appendChild(tr);
+
+        const trDetail = document.createElement('tr');
+        trDetail.classList.add('detail-row');
+        trDetail.style.display = 'none';
+        trDetail.innerHTML = `
+          <td colspan="6"><pre>${JSON.stringify(entry, null, 2)}</pre></td>
+        `;
+        tbody.appendChild(trDetail);
+
+        tr.querySelector('button').addEventListener('click', () => {
+          const isVisible = trDetail.style.display !== 'none';
+          trDetail.style.display = isVisible ? 'none' : '';
+          tr.querySelector('button').textContent = isVisible ? 'Show details' : 'Hide details';
+        });
+      });
+
+      // Mise à jour de l'indicateur de page
+      const totalPages = Math.ceil(allRequests.length / rowsPerPage);
+      document.getElementById('page-indicator').textContent = `Page ${currentPage} / ${totalPages}`;
+    }
+
+    function changePage(delta) {
+      const totalPages = Math.ceil(allRequests.length / rowsPerPage);
+      const newPage = currentPage + delta;
+
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderRequests();
+      }
+    }
+    function changeHistoryPage(delta) {
+      const totalPages = Math.ceil(allHistory.length / historyRowsPerPage);
+      const newPage = currentHistoryPage + delta;
+
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentHistoryPage = newPage;
+        renderHistory();
+      }
+    }
+
+    function changeFilesPage(delta) {
+      const totalPages = Math.ceil(allFiles.length / filesRowsPerPage);
+      const newPage = currentFilesPage + delta;
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentFilesPage = newPage;
+        renderFiles();
+      }
+    }
+
+
+
+    function renderHistory() {
+      const container = document.getElementById('history-list');
+      container.innerHTML = '';
+
+      if (!allHistory || allHistory.length === 0) {
+        container.innerHTML = '<li>No history available</li>';
+        return;
+      }
+
+      // Pagination
+      const totalPages = Math.ceil(allHistory.length / historyRowsPerPage);
+      const start = (currentHistoryPage - 1) * historyRowsPerPage;
+      const end = start + historyRowsPerPage;
+      const historyToShow = allHistory.slice(start, end);
+
+      historyToShow.forEach(historyItem => {
+        const li = document.createElement('li');
+
+        // Header cliquable avec nom du path + toggle icon
+        const header = document.createElement('div');
+        header.className = 'path-header';
+        header.textContent = historyItem.path;
+
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'toggle-icon';
+        toggleIcon.textContent = '▶'; // triangle droit fermé
+        header.appendChild(toggleIcon);
+
+        li.appendChild(header);
+
+        // Liste des entrées (fichiers + dossiers)
+        const entriesList = document.createElement('ul');
+        entriesList.className = 'entries-list';
+
+        historyItem.entries.forEach(entry => {
+          const entryLi = document.createElement('li');
+          entryLi.className = 'entry-item';
+
+          if (entry.is_dir) {
+            entryLi.classList.add('folder');
+            entryLi.textContent = `📁 ${entry.name}`;
+          } else {
+            entryLi.textContent = `📄 ${entry.name}`;
+          }
+          entriesList.appendChild(entryLi);
+        });
+
+        li.appendChild(entriesList);
+
+        header.addEventListener('click', () => {
+          const isVisible = entriesList.style.display === 'block';
+          entriesList.style.display = isVisible ? 'none' : 'block';
+          toggleIcon.textContent = isVisible ? '▶' : '▼';
+          toggleIcon.classList.toggle('open', !isVisible);
+        });
+
+        container.appendChild(li);
+      });
+
+      // Ajout des boutons de pagination pour l'historique
+      const paginationControlsId = 'history-pagination-controls';
+      let paginationControls = document.getElementById(paginationControlsId);
+
+      if (!paginationControls) {
+        paginationControls = document.createElement('div');
+        paginationControls.id = paginationControlsId;
+        paginationControls.style.marginTop = '0.8rem';
+        paginationControls.style.marginBottom = '1rem';
+        container.parentNode.insertBefore(paginationControls, container.nextSibling);
+      }
+
+      paginationControls.innerHTML = `
+        <button ${currentHistoryPage === 1 ? 'disabled' : ''} onclick="changeHistoryPage(-1)">Previous page</button>
+        <span> Page ${currentHistoryPage} / ${totalPages} </span>
+        <button ${currentHistoryPage === totalPages ? 'disabled' : ''} onclick="changeHistoryPage(1)">Next page</button>
+      `;
+    }
+
+    function renderFiles() {
+      const container = document.getElementById('files-list');
+      container.innerHTML = '';
+
+      if (!allFiles || allFiles.length === 0) {
+        container.innerHTML = '<li>No files available</li>';
+        return;
+      }
+
+      const totalPages = Math.ceil(allFiles.length / filesRowsPerPage);
+      const start = (currentFilesPage - 1) * filesRowsPerPage;
+      const end = start + filesRowsPerPage;
+      const filesToShow = allFiles.slice(start, end);
+
+      filesToShow.forEach(fileItem => {
+        const li = document.createElement('li');
+
+        // Titre cliquable = path du fichier
+        const header = document.createElement('div');
+        header.className = 'file-path-header';
+        header.textContent = fileItem.path;
+
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'toggle-icon';
+        toggleIcon.textContent = '▶'; // fermé
+        header.appendChild(toggleIcon);
+
+        li.appendChild(header);
+
+        // Contenu du fichier (dans pre, caché par défaut)
+        const contentPre = document.createElement('pre');
+        contentPre.className = 'file-content';
+        contentPre.style.display = 'none';
+        contentPre.textContent = fileItem.entries; // contenu texte complet
+        li.appendChild(contentPre);
+
+        header.addEventListener('click', () => {
+          const isVisible = contentPre.style.display === 'block';
+          contentPre.style.display = isVisible ? 'none' : 'block';
+          toggleIcon.textContent = isVisible ? '▶' : '▼';
+          toggleIcon.classList.toggle('open', !isVisible);
+        });
+
+        container.appendChild(li);
+      });
+
+      // Pagination boutons
+      const paginationControlsId = 'files-pagination-controls';
+      let paginationControls = document.getElementById(paginationControlsId);
+
+      if (!paginationControls) {
+        paginationControls = document.createElement('div');
+        paginationControls.id = paginationControlsId;
+        paginationControls.style.marginTop = '0.8rem';
+        paginationControls.style.marginBottom = '1rem';
+        container.parentNode.insertBefore(paginationControls, container.nextSibling);
+      }
+
+      paginationControls.innerHTML = `
+        <button ${currentFilesPage === 1 ? 'disabled' : ''} onclick="changeFilesPage(-1)">Previous page</button>
+        <span> Page ${currentFilesPage} / ${totalPages} </span>
+        <button ${currentFilesPage === totalPages ? 'disabled' : ''} onclick="changeFilesPage(1)">Next page</button>
+      `;
+    }
+
+
+
+    function render() {
+      renderRequests();
+      renderHistory();
+      renderFiles();
+      document.getElementById('files').textContent = JSON.stringify(allFiles, null, 2);
+    }
+
+    ws.onopen = () => {
+      console.log('[WebSocket] Connexion ouverte');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.requests_log) {
+          allRequests = data.requests_log;
+          currentPage = 1;
+        }
+        if (data.directory_history) {
+          allHistory = data.directory_history;
+          currentHistoryPage = 1;
+        }
+        if (data.directory_files) {
+          allFiles = data.directory_files;
+          currentFilesPage = 1;
+        }
+
+        if (data.new_requests_log) {
+          allRequests = allRequests.concat(data.new_requests_log);
+        }
+        if (data.new_directory_history) {
+          allHistory = allHistory.concat(data.new_directory_history);
+        }
+        if (data.new_directory_files) {
+          allFiles = allFiles.concat(data.new_directory_files);
+        }
+
+        render();
+      } catch (err) {
+        console.error('Erreur traitement message WebSocket :', err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error('[WebSocket] Erreur :', err);
+    };
+
+    ws.onclose = () => {
+      console.warn('[WebSocket] Connexion fermée');
+      document.getElementById('requests-body').innerHTML = '<tr><td colspan="6">Connexion WebSocket fermée.</td></tr>';
+      document.getElementById('history-list').innerHTML = 'Connexion WebSocket fermée.';
+      document.getElementById('files').textContent = 'Connexion WebSocket fermée.';
+    };
+  </script>
+</body>
+</html>

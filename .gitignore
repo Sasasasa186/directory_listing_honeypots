@@ -3,6 +3,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Fichiers générés par le LLM
+app/templates/generated/
+logs/
+
 # C extensions
 *.so
 

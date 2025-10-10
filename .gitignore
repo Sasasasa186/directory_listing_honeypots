@@ -8,9 +8,11 @@ app/templates/generated/
 logs/
 
 # Logs générés par le honeypot
-requests_log.jsonl
-directory_history.jsonl
-directory_files.jsonl
+
+directory_server/requests_log.jsonl
+directory_server/directory_history.jsonl
+directory_server/directory_files.jsonl
+
 
 
 # C extensions

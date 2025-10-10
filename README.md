@@ -39,7 +39,7 @@ pip install -r requirements.txt
 Crée un fichier `.env` à la racine avec les variables suivantes :
 
 ```env
-API_URL=http://127.0.0.1:11434/api/generate
+API_URL=adresse url de l'api pour le LLM
 AUTH_TOKEN=ta_clef_api_ici
 ```
 

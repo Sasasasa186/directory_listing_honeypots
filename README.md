@@ -2,18 +2,38 @@
 
 Un honeypot HTTP simulant un service de **directory listing**, générant dynamiquement des fichiers et dossiers fictifs grâce à un **modèle LLM**. Idéal pour des **tests pédagogiques, démonstrations ou études de sécurité**.
 
+## Structure du projet
+
+Le projet contient deux serveurs FastAPI :
+
+1. **Directory Server (`directory_serveur/`)**
+   - Honeypot HTTP simulant un service de directory listing.
+   - Fichiers principaux :
+     - `requests_log.jsonl` (requétes recuts par le serveur)
+     - `directory_history.jsonl` (historique des répertoires générés par le LLM)
+     - `directory_files.jsonl` (contenu des fichiers générés par le LLM)
+   - Les fichiers `.jsonl` doivent être placés directement dans `directory_serveur/`.
+
+2. **Monitoring Server (`monitor_serveur/`)**
+   - Affiche en temps réel l’historique du Directory Server (requétes et fichiers/dossiers générés).
+   - Lit automatiquement tous les fichiers `.jsonl` présents dans `directory_serveur/` via WebSocket.
+
 ---
 
 ## 🔹 Fonctionnalités
-
-* Simule un serveur Apache avec listing de répertoires.
-* Génère le nom/taille/date des fichiers HTML, TXT, JS, PY et autres extensions textuelles ainsi que sous_dossier de manière réaliste.
+### 🕵️‍♂️ Honeypot HTTP
+* Simule un serveur HTTP de type listing de répertoires.
+* Génère le nom/taille/date des fichiers HTML, TXT, JS, PY et autres extensions textuelles ainsi que des sous_dossier de manière réaliste.
 * Génère le contenu des fichiers HTML, TXT, JS, PY et autres extensions textuelles de manière réaliste.
-* Classe les fichiers et dossiers comme dans un vrai listing (`Parent Directory`, dossiers d’abord, fichiers ensuite).
-* Middleware de logging pour enregistrer toutes les requêtes dans un fichier JSONL.
-* Caches en mémoire et sur disque pour accélérer les réponses et limiter les appels au LLM.
+* Middleware pour enregistrer toutes les requêtes dans un fichier JSONL.
 * Utilise **FastAPI** pour un serveur léger et rapide.
 
+### 📡 Monitoring en temps réel
+* Serveur FastAPI avec WebSocket.
+* Affiche en direct :
+  - Les requêtes HTTP reçues.
+  - L’historique des répertoires.
+  - Les fichiers exposés.
 ---
 
 ## 🛠️ Installation
@@ -68,13 +88,15 @@ static/
  └─ favicon.ico
 logs/
  └─ requests_log.jsonl  # toutes les requêtes entrantes
+ ├─ directory_history.jsonl #tous les dossiers générés
+ ├─ directory_files.jsonl #tous les fichiers générés
 ```
 
 * `logs/` et `generated/` sont **exclus de GitHub** via `.gitignore`.
 
 ---
 
-## 🚀 Lancement
+## 🚀 Lancement des serveurs
 
 ```bash
 uvicorn app.main:serv --reload

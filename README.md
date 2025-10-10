@@ -87,9 +87,9 @@ app/
 static/
  ├─ milligram.min.css
  └─ favicon.ico
-├─ requests_log.jsonl  # toutes les requêtes entrantes
-├─ directory_history.jsonl #tous les dossiers générés
-└─ directory_files.jsonl #tous les fichiers générés
+requests_log.jsonl  # toutes les requêtes entrantes
+directory_history.jsonl #tous les dossiers générés
+directory_files.jsonl #tous les fichiers générés
 
 ```
 

@@ -67,7 +67,7 @@ AUTH_TOKEN=ta_clef_api_ici
 
 ---
 
-## 📂 Structure des dossiers
+## 📂 Structure des dossiers pour directory_serveur
 
 ```
 app/
@@ -82,13 +82,14 @@ app/
  ├─ config.py           # configuration globale
  ├─ directory_cache.py  # cache des dossiers
  ├─ directory_files.py  # cache des fichiers
- ├─ prompt_fake_files.py
- ├─ requests_log.jsonl  # toutes les requêtes entrantes
- ├─ directory_history.jsonl #tous les dossiers générés
- └─ directory_files.jsonl #tous les fichiers générés
+ └─ prompt_fake_files.py
+ 
 static/
  ├─ milligram.min.css
  └─ favicon.ico
+├─ requests_log.jsonl  # toutes les requêtes entrantes
+├─ directory_history.jsonl #tous les dossiers générés
+└─ directory_files.jsonl #tous les fichiers générés
 
 ```
 
